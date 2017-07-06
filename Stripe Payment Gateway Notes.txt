@@ -1,0 +1,144 @@
+Traditional PayPal model has PayPal processing payments internally: from the customer’s PayPal account to yours.
+
+
+The PayPal fees tend to be lower than the payment gateway-merchant account route, but your money ends up in PayPal at the end of the process, not in your bank account (until you transfer it).
+
+
+Stripe is a “full-stack” solution, meaning Stripe acts as both the payment gateway and the merchant account.
+
+
+Stripe clears the payment information with the associated credit card company, and Stripe puts the money in your bank account.
+
+
+The traditional PayPal service takes the customer through PayPal’s site, but PayPal has another service that works behind-the-scenes, leaving the customer on your site the entire time (regardless of whether the customer is paying using her PayPal account or a credit card). Stripe’s system always keeps the customer on your site.
+
+
+Do you have a business and a bank account located in one of the countries that Stripe supports?
+
+
+Third, Stripe uses Ajax to transfer the credit card data to their system.
+
+
+The customer’s credit card data never touches your system.
+
+
+Stripe has no monthly fees or setup fees, and international charges are at the same rates, too. And you won’t be charged for failed payments. If you refund a charge, Stripe refunds its fees, too!
+
+
+Stripe will deposit monies into your bank account a couple days after the transaction has occurred. This allows for refunds to be processed or fraudulent charges to be caught. Most payment systems do have a built-in delay, though, except for a PayPal to PayPal transaction.
+
+
+You will develop your site using the test API keys (one key is public, used in the client; the other key is private, used on the server).
+
+
+This also means that you can run test transactions through your site while customers are simultaneously running live transactions!
+
+
+If you’re doing e-commerce, you need SSL/HTTPS.
+
+
+SSL, and its newer incarnation Transport Layer Security (TLS), encrypt and decrypt data so that it can be transmitted securely over the Internet. When SSL is used in combination with HTTP, you get HTTPS: a secure way for a browser to access a website.
+
+
+Note that SSL is not just for securing HTTP connections. It can be used to add security to many types of protocols, such as File Transfer Protocol (FTP) and Simple Mail Transfer Protocol (SMTP).
+
+
+Certificates can be signed or unsigned. For example, I can create my own SSL certificate and configure my website to use it. This is an example of a unsigned (or self-signed) certificate. 
+
+
+An SSL certificate is a type of public key certificate, or digital certificate, that ties a public key to an identity. The key is used by the encryption/decryption process. The identity in the case of HTTPS is a domain name.
+
+
+Note: If a user’s credit card or other payment information reaches your server, you must be PCI compliant and take many more steps to protect both the user and your business. In short, not only should you never store the user’s payment information, you really ought not to have it in your possession either, even momentarily.
+
+
+Using Stripe.js, the user never leaves your website AND you aren’t exposed to extra security risks because the user’s payment information will not touch your server.
+
+
+The process works like so:
+
+1. You create a form on your website that accepts the payment details.
+2. You include a Stripe JavaScript library on the page.
+3. You write a JavaScript function that watches for the form submission (i.e., you create an event handler for the form’s submission).
+4. When the form is submitted, the user’s payment details are securely sent to Stripe via Ajax.
+5. Stripe will confirm that the payment information is valid and return a token that uniquely identifies that payment information.
+6. The JavaScript function that handles the Ajax response stores the token in a hidden form element and submits the form.
+7. The server-side script (aka, the PHP code) that handles the form’s submission uses the token to actually process the payment.
+
+
+So the customer never leaves your site but the payment information never hits your server: the best of both worlds.
+
+
+For the form elements, it’s really up to you what all the form has. At the very least, you’ll need to have fields for the:
+
+    Credit card number
+    Expiration month
+    Expiration year
+
+
+The user’s name and billing address is entirely optional from a payment validation perspective.
+
+
+Note:  In any case, the most important factor is this: do not provide name values for these form elements! You should also set the autocomplete property to off for each element, so that the user’s browser does not attempt to save the values.
+
+
+If you do PHP programming, you know that the names of your form elements correspond to the names of the indexes wherein you can access the form data: $_POST[‘name’], $_POST[’email’], etc. Taking this knowledge a step further, it turns out that if you don’t provide a name for a form element, then that element’s value will not be accessible to the server. This is how you protect the user and your business: the user’s payment information never actually gets to your server! Your server will, however, receive the Stripe-provided token, which represents the payment option (it will be stored in a hidden form element via JavaScript and DOM manipulation).
+
+
+
+As there’s no need to send an incomplete request to Stripe, only to wait for that response to return an error. The Stripe object, defined in Stripe.js, has several validation methods built in:
+
+    validateCardNumber()
+    validateCVC()
+    validateExpiry()
+
+
+
+At this point, the customer’s payment information has been sent to Stripe, a representative token has been returned by Stripe, that token has been stored in a hidden form input, and the form has been submitted to PHP on the server. No payment has actually been made yet (i.e., the customer’s credit card has not been charged).
+
+
+Then create the charge by invoking \Stripe\Charge::create(). It takes an array as an argument:
+$charge = \Stripe\Charge::create(array(
+));
+
+
+The full Stripe API docs list all the possible options, but at the very least you want these array indexes and values:
+
+    amount
+    currency
+    source
+
+
+You can optionally provide a “description” value. This is something you’ll be able to use to associate other information with the charge. The recommended and logical choice is to provide a unique customer identifier with the description, such as the customer’s email address.
+
+$charge = \Stripe\Charge::create(array(
+    'amount' => $amount, // Amount in cents!
+    'currency' => 'usd',
+    'source' => $token,
+    'description' => $email
+));
+
+
+Note: The amount needs to be an integer in cents! This is easy to miss. If you’ve got a decimal, like charging a client $1.95, just multiply that times 100. (And, frankly, it’s pretty much standard to do e-commerce in cents anyway.)
+
+
+After the invocation of create(), you can use the $charge object to test the success of the operation (assuming no exceptions occurred). The charge object will have many attributes, including:
+
+amount, the amount charged
+id, a unique identifier
+livemode, a Boolean
+source, an object that stores information about the source charged, which is normally a card (but nothing too revealing beyond the address and the last four digits of the card)
+currency, the ISO code
+paid, a Boolean
+description, the description you provided
+
+
+
+To confirm that the charge went through, and that you were paid, you can check the paid attribute:
+if ($charge->paid == true) { // Whohoo!
+
+
+
+
+ 
+
